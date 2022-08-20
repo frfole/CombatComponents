@@ -1,0 +1,8 @@
+{
+  "entrypoint": "code.frfole.combat.CombatExtension",
+  "name": "CombatComponents",
+  "version": "1.0.0",
+  "authors": [
+    "frfole"
+  ]
+}

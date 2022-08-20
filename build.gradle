@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+group 'code.frfole'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+
+    maven { url 'https://repo.spongepowered.org/maven' }
+    maven { url 'https://repo.velocitypowered.com/snapshots/' }
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+
+    compileOnly 'com.github.Minestom:Minestom:f5f323fef9'
+    testImplementation 'com.github.Minestom:Minestom:f5f323fef9'
+}
+
+test {
+    useJUnitPlatform()
+}

@@ -27,6 +27,11 @@ public final class CombatContext implements Taggable {
     @SuppressWarnings("UnstableApiUsage")
     private final @NotNull TagHandler tagHandler = TagHandler.newHandler();
 
+    /**
+     * Creates a new combat context.
+     * @param attacker the attacker
+     * @param target   the target
+     */
     public CombatContext(@NotNull LivingEntity attacker, @NotNull LivingEntity target) {
         this.attacker = attacker;
         this.target = target;
@@ -82,5 +87,14 @@ public final class CombatContext implements Taggable {
     @Contract(pure = true)
     public boolean isCanceled() {
         return getTag(CANCEL_TAG);
+    }
+
+    /**
+     * Sets the cancel status.
+     * @param cancel true if the attack is canceled, false otherwise
+     */
+    @Contract(mutates = "this")
+    public void setCanceled(boolean cancel) {
+        setTag(CANCEL_TAG, cancel);
     }
 }

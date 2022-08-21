@@ -9,15 +9,28 @@ import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
 import org.jglrxavpok.hephaistos.nbt.NBT;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
 public final class CombatExtension extends Extension {
+    /**
+     * The tag used to represent list of combat components.
+     */
     @SuppressWarnings("UnstableApiUsage")
     public static final Tag<List<CombatComponent>> COMBAT_TAG = Tag.Structure("combat_components", CombatComponent.class)
             .list()
             .defaultValue(List.of());
+    /**
+     * The tag used to represent the preference of combat components.
+     * Components are sorted by their holder with order defined by this tag.
+     */
+    @SuppressWarnings("UnstableApiUsage")
+    public static final Tag<List<ComponentHolderType>> COMPONENT_PREFERENCES_TAG = Tag.Integer("component_preferences")
+            .map(ComponentHolderType::fromInteger, ComponentHolderType::ordinal)
+            .list()
+            .defaultValue(List.of(ComponentHolderType.ITEM));
     private @NotNull Map<String, BiConsumer<CombatContext, NBT>> allComponents = Map.of();
 
 
@@ -36,9 +49,17 @@ public final class CombatExtension extends Extension {
 
     private void onEntityAttack(@NotNull EntityAttackEvent event) {
         if (event.getEntity() instanceof LivingEntity attacker && event.getTarget() instanceof LivingEntity target) {
-            List<CombatComponent> components = attacker.getItemInMainHand().getTag(COMBAT_TAG);
+            List<CombatComponent> components = new ArrayList<>();
+            for (ComponentHolderType holderType : event.getEntity().getTag(COMPONENT_PREFERENCES_TAG)) {
+                components.addAll(switch (holderType) {
+                    case ENTITY -> attacker.getTag(COMBAT_TAG);
+                    case ITEM -> attacker.getItemInMainHand().getTag(COMBAT_TAG);
+                    default -> List.of();
+                });
+            }
             CombatContext context = new CombatContext(attacker, target);
             for (CombatComponent component : components) {
+                if (component.ignoreCanceled() && context.isCanceled()) continue;
                 BiConsumer<CombatContext, NBT> consumer = allComponents.get(component.name());
                 if (consumer == null) {
                     MinecraftServer.getExceptionManager().handleException(new IllegalArgumentException("Unknown combat component: " + component.name()));

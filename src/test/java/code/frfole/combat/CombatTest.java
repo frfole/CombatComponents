@@ -48,6 +48,8 @@ public class CombatTest {
                     context.modifyDamage(damage -> (damage + compound.getFloat("add")) * compound.getFloat("mul"));
                 }
             });
+            event.builder().addComponent("cancel", (context, data) -> context.setCanceled(true));
+            event.builder().addComponent("uncancel", (context, data) -> context.setCanceled(false));
         });
 
         // listen to damage event
@@ -114,6 +116,44 @@ public class CombatTest {
             phaser.arriveAndAwaitAdvance();
             Assertions.assertEquals(50f, atomicDamage.get(), "multiple components");
         }
+        { // test canceling
+            fakePlayer1.setItemInMainHand(ItemStack.builder(Material.STONE)
+                    .set(CombatExtension.COMBAT_TAG, List.of(
+                            new CombatComponent("cancel", null),
+                            new CombatComponent("set", new NBTFloat(5f)),
+                            new CombatComponent("uncancel", false, null),
+                            new CombatComponent("add_mul", NBT.Compound(builder -> {
+                                builder.put("add", new NBTFloat(5f));
+                                builder.put("mul", new NBTFloat(5f));
+                            }))
+                    ))
+                    .build());
+            fakePlayer1.getController().attackEntity(fakePlayer2);
+            phaser.arriveAndAwaitAdvance();
+            Assertions.assertEquals(25f, atomicDamage.get(), "canceling");
+        }
+        { // test preferences
+            fakePlayer1.setTag(CombatExtension.COMPONENT_PREFERENCES_TAG, List.of(ComponentHolderType.ENTITY, ComponentHolderType.ITEM));
+            fakePlayer1.setTag(CombatExtension.COMBAT_TAG, List.of(
+                    new CombatComponent("set", new NBTFloat(6f)),
+                    new CombatComponent("add_mul", NBT.Compound(builder -> {
+                        builder.put("add", new NBTFloat(5f));
+                        builder.put("mul", new NBTFloat(5f));
+                    }))
+            ));
+            fakePlayer1.setItemInMainHand(ItemStack.builder(Material.STONE)
+                    .set(CombatExtension.COMBAT_TAG, List.of(
+                            new CombatComponent("add_mul", NBT.Compound(builder -> {
+                                builder.put("add", new NBTFloat(3f));
+                                builder.put("mul", new NBTFloat(3f));
+                            }))
+                    ))
+                    .build());
+            fakePlayer1.getController().attackEntity(fakePlayer2);
+            phaser.arriveAndAwaitAdvance();
+            Assertions.assertEquals(174f, atomicDamage.get(), "preferences");
+        }
+        MinecraftServer.stopCleanly();
     }
 
     private static void registerExtensions() throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {

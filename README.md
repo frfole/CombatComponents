@@ -1,5 +1,5 @@
 # CombatComponents
-Minestom extension for item's tags driven combat system.
+Minestom extension for player's and item's tags driven combat system.
 
 
 ## Usage

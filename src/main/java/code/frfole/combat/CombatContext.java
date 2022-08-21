@@ -4,6 +4,7 @@ import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.tag.TagHandler;
 import net.minestom.server.tag.Taggable;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.UnaryOperator;
@@ -11,13 +12,19 @@ import java.util.function.UnaryOperator;
 /**
  * Holds the context of a combat.
  */
-public class CombatContext implements Taggable {
+@SuppressWarnings("unused")
+public final class CombatContext implements Taggable {
     /**
      * The tag used to represent the damage in the {@link CombatContext}.
      */
     public static final Tag<@NotNull Float> DAMAGE_TAG = Tag.Float("damage").defaultValue(0f);
+    /**
+     * The tag used to indicate the attack is canceled.
+     */
+    public static final Tag<@NotNull Boolean> CANCEL_TAG = Tag.Boolean("cancel").defaultValue(false);
     private final @NotNull LivingEntity attacker;
     private final @NotNull LivingEntity target;
+    @SuppressWarnings("UnstableApiUsage")
     private final @NotNull TagHandler tagHandler = TagHandler.newHandler();
 
     public CombatContext(@NotNull LivingEntity attacker, @NotNull LivingEntity target) {
@@ -29,6 +36,7 @@ public class CombatContext implements Taggable {
      * Gets the attacker.
      * @return the attacking entity
      */
+    @Contract(pure = true)
     public @NotNull LivingEntity getAttacker() {
         return attacker;
     }
@@ -37,10 +45,12 @@ public class CombatContext implements Taggable {
      * Gets the entity, who is attacked.
      * @return the attacked entity
      */
+    @Contract(pure = true)
     public @NotNull LivingEntity getTarget() {
         return target;
     }
 
+    @Contract(pure = true)
     @Override
     public @NotNull TagHandler tagHandler() {
         return tagHandler;
@@ -50,7 +60,9 @@ public class CombatContext implements Taggable {
      * Modifies the damage.
      * @param operator the operator to modify the damage
      */
+    @Contract(mutates = "this")
     public void modifyDamage(UnaryOperator<@NotNull Float> operator) {
+        //noinspection UnstableApiUsage
         tagHandler.updateTag(DAMAGE_TAG, operator);
     }
 
@@ -58,7 +70,17 @@ public class CombatContext implements Taggable {
      * Gets the current damage.
      * @return the current damage
      */
+    @Contract(pure = true)
     public float getDamage() {
-        return tagHandler.getTag(DAMAGE_TAG);
+        return getTag(DAMAGE_TAG);
+    }
+
+    /**
+     * Gets the current cancel status.
+     * @return true if the attack is canceled, false otherwise
+     */
+    @Contract(pure = true)
+    public boolean isCanceled() {
+        return getTag(CANCEL_TAG);
     }
 }

@@ -1,51 +1,42 @@
 package code.frfole.combat;
 
+import com.google.gson.Gson;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.command.builder.condition.Conditions;
 import net.minestom.server.entity.damage.EntityDamage;
 import net.minestom.server.entity.fakeplayer.FakePlayer;
 import net.minestom.server.event.entity.EntityDamageEvent;
 import net.minestom.server.event.player.PlayerLoginEvent;
+import net.minestom.server.extensions.DiscoveredExtension;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
-import net.minestom.server.utils.validate.Check;
 import org.jglrxavpok.hephaistos.nbt.NBT;
 import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 import org.jglrxavpok.hephaistos.nbt.NBTFloat;
+import org.junit.jupiter.api.*;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public class CombatTest {
 
-    private final static ItemStack item_1 = ItemStack.builder(Material.STONE)
-            .set(CombatExtension.COMBAT_TAG, List.of(
-                    new CombatComponent("add_mul", NBT.Compound(builder -> {
-                        builder.put("add", new NBTFloat(5f));
-                        builder.put("mul", new NBTFloat(5f));
-                    }))
-            ))
-            .build();
-    private final static ItemStack item_2 = ItemStack.builder(Material.STONE)
-            .set(CombatExtension.COMBAT_TAG, List.of(
-                    new CombatComponent("set", new NBTFloat(5f)),
-                    new CombatComponent("add_mul", NBT.Compound(builder -> {
-                        builder.put("add", new NBTFloat(5f));
-                        builder.put("mul", new NBTFloat(5f));
-                    }))
-            ))
-            .build();
-
-
-    public static void main(String[] args) throws InterruptedException {
+    @Test
+    public void test() throws InterruptedException {
+        // init server
         MinecraftServer server = MinecraftServer.init();
         InstanceContainer spawningInstance = MinecraftServer.getInstanceManager().createInstanceContainer();
+        MinecraftServer.getGlobalEventHandler().addListener(PlayerLoginEvent.class, event -> event.setSpawningInstance(spawningInstance));
 
+        // register components
         MinecraftServer.getGlobalEventHandler().addListener(CombatLoadingEvent.class, event -> {
             event.builder().addComponent("set", (context, data) -> {
                 if (data instanceof NBTFloat nbtFloat)
@@ -53,59 +44,91 @@ public class CombatTest {
             });
             event.builder().addComponent("add_mul", (context, data) -> {
                 if (data instanceof NBTCompound compound && compound.getFloat("add") != null && compound.getFloat("mul") != null) {
+                    //noinspection ConstantConditions
                     context.modifyDamage(damage -> (damage + compound.getFloat("add")) * compound.getFloat("mul"));
                 }
             });
         });
+
+        // listen to damage event
         Phaser phaser = new Phaser(2);
         AtomicReference<Float> atomicDamage = new AtomicReference<>(0f);
         MinecraftServer.getGlobalEventHandler().addListener(EntityDamageEvent.class, event -> {
-            if (event.getDamageType() instanceof EntityDamage damage) {
+            if (event.getDamageType() instanceof EntityDamage) {
                 event.setCancelled(true);
                 atomicDamage.set(event.getDamage());
                 phaser.arrive();
             }
         });
-        MinecraftServer.getGlobalEventHandler().addListener(PlayerLoginEvent.class, event -> {
-            event.setSpawningInstance(spawningInstance);
-        });
 
+        // start server
         server.start("localhost", 0);
+        Assertions.assertDoesNotThrow(CombatTest::registerExtensions, "Failed to register extensions");
 
-        AtomicReference<FakePlayer> fakePlayer1ref = new AtomicReference<>();
-        AtomicReference<FakePlayer> fakePlayer2ref = new AtomicReference<>();
+        // spawn fake players
+        AtomicReferenceArray<FakePlayer> fakePlayersRef = new AtomicReferenceArray<>(2);
         CountDownLatch latch = new CountDownLatch(2);
-        FakePlayer.initPlayer(UUID.randomUUID(), "fakePlayer1", newValue -> {
-            fakePlayer1ref.set(newValue);
+        FakePlayer.initPlayer(UUID.randomUUID(), "fakePlayer", newValue -> {
+            fakePlayersRef.set((int) (latch.getCount() - 1), newValue);
             latch.countDown();
         });
-        FakePlayer.initPlayer(UUID.randomUUID(), "fakePlayer2", newValue -> {
-            fakePlayer2ref.set(newValue);
+        FakePlayer.initPlayer(UUID.randomUUID(), "fakePlayer", newValue -> {
+            fakePlayersRef.set((int) (latch.getCount() - 1), newValue);
             latch.countDown();
         });
-        if (latch.await(10, TimeUnit.SECONDS)) {
-            FakePlayer fakePlayer1 = fakePlayer1ref.get();
-            FakePlayer fakePlayer2 = fakePlayer2ref.get();
+        Assertions.assertTrue(latch.await(10, TimeUnit.SECONDS), "Fake players not spawned");
+        FakePlayer fakePlayer1 = fakePlayersRef.get(0);
+        FakePlayer fakePlayer2 = fakePlayersRef.get(1);
 
+        { // test no components
             fakePlayer1.getController().attackEntity(fakePlayer2);
             phaser.arriveAndAwaitAdvance();
-            Check.argCondition(atomicDamage.get() != 0f, "excepted 0, got {0}", atomicDamage.get());
-
-            fakePlayer1.setItemInMainHand(item_1);
-            fakePlayer1.getController().attackEntity(fakePlayer2);
-            phaser.arriveAndAwaitAdvance();
-            Check.argCondition(atomicDamage.get() != 25f, "excepted 25, got {0}", atomicDamage.get());
-
-            fakePlayer1.setItemInMainHand(item_2);
-            fakePlayer1.getController().attackEntity(fakePlayer2);
-            phaser.arriveAndAwaitAdvance();
-            Check.argCondition(atomicDamage.get() != 50f, "excepted 50, got {0}", atomicDamage.get());
-
-            fakePlayer1.setItemInMainHand(item_1);
-            fakePlayer1.getController().attackEntity(fakePlayer2);
-            phaser.arriveAndAwaitAdvance();
-            Check.argCondition(atomicDamage.get() != 25f, "excepted 25, got {0}", atomicDamage.get());
+            Assertions.assertEquals(0f, atomicDamage.get(), "no components");
         }
-        MinecraftServer.stopCleanly();
+
+        { // test single component
+            fakePlayer1.setItemInMainHand(ItemStack.builder(Material.STONE)
+                    .set(CombatExtension.COMBAT_TAG, List.of(
+                            new CombatComponent("add_mul", NBT.Compound(builder -> {
+                                builder.put("add", new NBTFloat(5f));
+                                builder.put("mul", new NBTFloat(5f));
+                            }))
+                    ))
+                    .build());
+            fakePlayer1.getController().attackEntity(fakePlayer2);
+            phaser.arriveAndAwaitAdvance();
+            Assertions.assertEquals(25f, atomicDamage.get(), "single component");
+        }
+
+        { // test multiple components
+            fakePlayer1.setItemInMainHand(ItemStack.builder(Material.STONE)
+                    .set(CombatExtension.COMBAT_TAG, List.of(
+                            new CombatComponent("set", new NBTFloat(5f)),
+                            new CombatComponent("add_mul", NBT.Compound(builder -> {
+                                builder.put("add", new NBTFloat(5f));
+                                builder.put("mul", new NBTFloat(5f));
+                            }))
+                    ))
+                    .build());
+            fakePlayer1.getController().attackEntity(fakePlayer2);
+            phaser.arriveAndAwaitAdvance();
+            Assertions.assertEquals(50f, atomicDamage.get(), "multiple components");
+        }
+    }
+
+    private static void registerExtensions() throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+        // prepare the extension
+        InputStream resourceAsStream = ClassLoader.getSystemResourceAsStream("extension.json");
+        Assertions.assertNotNull(resourceAsStream, "extension.json not found");
+        DiscoveredExtension extension = new Gson().fromJson(new InputStreamReader(resourceAsStream), DiscoveredExtension.class);
+        DiscoveredExtension.verifyIntegrity(extension);
+        Method createClassLoaderMethod = extension.getClass().getDeclaredMethod("createClassLoader");
+        createClassLoaderMethod.setAccessible(true);
+        createClassLoaderMethod.invoke(extension);
+
+        // load extensions
+        Method loadMethod = MinecraftServer.getExtensionManager().getClass().getDeclaredMethod("loadExtensionList", List.class);
+        loadMethod.setAccessible(true);
+        loadMethod.invoke(MinecraftServer.getExtensionManager(), List.of(extension));
     }
 }

@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 public final class CombatExtension extends Extension {
+    @SuppressWarnings("UnstableApiUsage")
     public static final Tag<List<CombatComponent>> COMBAT_TAG = Tag.Structure("combat_components", CombatComponent.class)
             .list()
             .defaultValue(List.of());
@@ -45,7 +46,9 @@ public final class CombatExtension extends Extension {
                 }
                 consumer.accept(context, component.data());
             }
-            target.damage(DamageType.fromEntity(attacker), context.getDamage());
+            if (!context.isCanceled()) {
+                target.damage(DamageType.fromEntity(attacker), context.getDamage());
+            }
         }
     }
 }

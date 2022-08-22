@@ -5,6 +5,9 @@ plugins {
 group 'code.frfole'
 version '1.0-SNAPSHOT'
 
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
 repositories {
     mavenCentral()
 
@@ -23,4 +26,5 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    workingDir('./run/')
 }

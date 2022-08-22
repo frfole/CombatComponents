@@ -13,7 +13,7 @@ public record CombatComponent(String name, boolean ignoreCanceled, @Nullable NBT
      * @param name the identifier of the component
      * @param data additional data of the component
      */
-    public CombatComponent(String name, @Nullable  NBT data) {
+    public CombatComponent(String name, @Nullable NBT data) {
         this(name, true, data);
     }
 

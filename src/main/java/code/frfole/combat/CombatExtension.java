@@ -1,12 +1,15 @@
 package code.frfole.combat;
 
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.LivingEntity;
 import net.minestom.server.entity.damage.DamageType;
 import net.minestom.server.event.entity.EntityAttackEvent;
 import net.minestom.server.extensions.Extension;
+import net.minestom.server.inventory.EquipmentHandler;
 import net.minestom.server.tag.Tag;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jglrxavpok.hephaistos.nbt.NBT;
 
 import java.util.ArrayList;
@@ -30,8 +33,8 @@ public final class CombatExtension extends Extension {
     public static final Tag<List<ComponentHolderType>> COMPONENT_PREFERENCES_TAG = Tag.Integer("component_preferences")
             .map(ComponentHolderType::fromInteger, ComponentHolderType::ordinal)
             .list()
-            .defaultValue(List.of(ComponentHolderType.ITEM));
-    private @NotNull Map<String, BiConsumer<CombatContext, NBT>> allComponents = Map.of();
+            .defaultValue(List.of(ComponentHolderType.ITEM_IN_MAIN_HAND));
+    private @NotNull Map<String, BiConsumer<CombatContext, @Nullable NBT>> allComponents = Map.of();
 
 
     @Override
@@ -48,28 +51,33 @@ public final class CombatExtension extends Extension {
     }
 
     private void onEntityAttack(@NotNull EntityAttackEvent event) {
-        if (event.getEntity() instanceof LivingEntity attacker && event.getTarget() instanceof LivingEntity target) {
-            List<CombatComponent> components = new ArrayList<>();
-            for (ComponentHolderType holderType : event.getEntity().getTag(COMPONENT_PREFERENCES_TAG)) {
-                components.addAll(switch (holderType) {
-                    case ENTITY -> attacker.getTag(COMBAT_TAG);
-                    case ITEM -> attacker.getItemInMainHand().getTag(COMBAT_TAG);
-                    default -> List.of();
-                });
+        Entity attacker = event.getEntity();
+        Entity target = event.getTarget();
+        List<CombatComponent> components = new ArrayList<>();
+        for (ComponentHolderType holderType : attacker.getTag(COMPONENT_PREFERENCES_TAG)) {
+            components.addAll(switch (holderType) {
+                case ENTITY -> attacker.getTag(COMBAT_TAG);
+                case ITEM_IN_MAIN_HAND -> attacker instanceof EquipmentHandler ?
+                        ((EquipmentHandler) attacker).getItemInMainHand().getTag(COMBAT_TAG) :
+                        List.of();
+                case ITEM_IN_OFF_HAND -> attacker instanceof EquipmentHandler ?
+                        ((EquipmentHandler) attacker).getItemInOffHand().getTag(COMBAT_TAG) :
+                        List.of();
+                default -> List.of();
+            });
+        }
+        CombatContext context = new CombatContext(attacker, target);
+        for (CombatComponent component : components) {
+            if (component.ignoreCanceled() && context.isCanceled()) continue;
+            BiConsumer<CombatContext, NBT> consumer = allComponents.get(component.name());
+            if (consumer == null) {
+                MinecraftServer.getExceptionManager().handleException(new IllegalArgumentException("Unknown combat component: " + component.name()));
+                continue;
             }
-            CombatContext context = new CombatContext(attacker, target);
-            for (CombatComponent component : components) {
-                if (component.ignoreCanceled() && context.isCanceled()) continue;
-                BiConsumer<CombatContext, NBT> consumer = allComponents.get(component.name());
-                if (consumer == null) {
-                    MinecraftServer.getExceptionManager().handleException(new IllegalArgumentException("Unknown combat component: " + component.name()));
-                    continue;
-                }
-                consumer.accept(context, component.data());
-            }
-            if (!context.isCanceled()) {
-                target.damage(DamageType.fromEntity(attacker), context.getDamage());
-            }
+            consumer.accept(context, component.data());
+        }
+        if (!context.isCanceled() && target instanceof LivingEntity livingTarget) {
+            livingTarget.damage(DamageType.fromEntity(attacker), context.getDamage());
         }
     }
 }

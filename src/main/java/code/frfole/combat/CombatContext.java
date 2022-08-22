@@ -1,6 +1,6 @@
 package code.frfole.combat;
 
-import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.tag.Tag;
 import net.minestom.server.tag.TagHandler;
 import net.minestom.server.tag.Taggable;
@@ -22,8 +22,8 @@ public final class CombatContext implements Taggable {
      * The tag used to indicate the attack is canceled.
      */
     public static final Tag<@NotNull Boolean> CANCEL_TAG = Tag.Boolean("cancel").defaultValue(false);
-    private final @NotNull LivingEntity attacker;
-    private final @NotNull LivingEntity target;
+    private final @NotNull Entity attacker;
+    private final @NotNull Entity target;
     @SuppressWarnings("UnstableApiUsage")
     private final @NotNull TagHandler tagHandler = TagHandler.newHandler();
 
@@ -32,7 +32,7 @@ public final class CombatContext implements Taggable {
      * @param attacker the attacker
      * @param target   the target
      */
-    public CombatContext(@NotNull LivingEntity attacker, @NotNull LivingEntity target) {
+    public CombatContext(@NotNull Entity attacker, @NotNull Entity target) {
         this.attacker = attacker;
         this.target = target;
     }
@@ -42,7 +42,7 @@ public final class CombatContext implements Taggable {
      * @return the attacking entity
      */
     @Contract(pure = true)
-    public @NotNull LivingEntity getAttacker() {
+    public @NotNull Entity getAttacker() {
         return attacker;
     }
 
@@ -51,7 +51,7 @@ public final class CombatContext implements Taggable {
      * @return the attacked entity
      */
     @Contract(pure = true)
-    public @NotNull LivingEntity getTarget() {
+    public @NotNull Entity getTarget() {
         return target;
     }
 

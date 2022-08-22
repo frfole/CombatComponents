@@ -13,9 +13,13 @@ public enum ComponentHolderType {
      */
     ENTITY,
     /**
-     * Holder is item
+     * Holder is entity's item in main hand
      */
-    ITEM;
+    ITEM_IN_MAIN_HAND,
+    /**
+     * Holder is entity's item in off hand
+     */
+    ITEM_IN_OFF_HAND;
 
     /**
      * Gets the holder corresponding to the given ID.
@@ -28,7 +32,8 @@ public enum ComponentHolderType {
         }
         return switch (integer) {
             case 1 -> ENTITY;
-            case 2 -> ITEM;
+            case 2 -> ITEM_IN_MAIN_HAND;
+            case 3 -> ITEM_IN_OFF_HAND;
             default -> NONE;
         };
     }

@@ -1,4 +1,4 @@
-name: Java CI with Gradle
+name: Build
 
 on:
   push:
@@ -29,4 +29,5 @@ jobs:
           arguments: build
       - uses: actions/upload-artifact@v3
         with:
+          name: CombatComponents
           path: build/libs/CombatComponents-*.jar

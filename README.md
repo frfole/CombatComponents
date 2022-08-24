@@ -1,33 +1,35 @@
 # CombatComponents
-Minestom extension for player's and item's tags driven combat system.
+Minestom extension for tags driven combat system.
 
 
 ## Usage
-Put the extension jar in the extensions folder of your server and implement your own combat components in your server or other extension.
+Create a listener for the event `CombatLoadingEvent` and register your combat components.
 
-### Example
 ```java
-// register your own combat components
 eventNode.addListener(CombatLoadingEvent.class, event -> {
-    event.builder().addComponent("set", (context, data) -> {
-        if (data instanceof NBTFloat nbtFloat)
-            context.modifyDamage(damage -> nbtFloat.getValue());
-    });
-    event.builder().addComponent("add_mul", (context, data) -> {
-        if (data instanceof NBTCompound compound && compound.getFloat("add") != null && compound.getFloat("mul") != null) {
-            context.modifyDamage(damage -> (damage + compound.getFloat("add")) * compound.getFloat("mul"));
-        }
+    event.builder().addComponent("component_name", (context, data) -> {
+        // your code
     });
 });
-
-// create item with combat components
-ItemStack item = ItemStack.builder(Material.STONE)
-        .set(CombatExtension.COMBAT_TAG, List.of(
-                new CombatComponent("set", new NBTFloat(5f)),
-                new CombatComponent("add_mul", NBT.Compound(builder -> {
-                    builder.put("add", new NBTFloat(5f));
-                    builder.put("mul", new NBTFloat(5f));
-                }))
-        ))
-        .build();
 ```
+
+Add your components to item or entity tags.
+
+```java
+item.setTag(CombatExtension.COMBAT_TAG, List.of(
+        new CombatComponent("component_1", null,
+        new CombatComponent("component_2", new NBTFloat(10f)),
+        // ...
+        new CombatComponent("component_n", false, new NBTInt(1))
+));
+```
+
+Set components preferences of entity (by default `List.of(ComponentHolderType.ITEM_IN_MAIN_HAND)`).
+
+```java
+entity.setTag(CombatExtension.COMPONENT_PREFERENCES_TAG, List.of(ComponentHolderType.ITEM_IN_MAIN_HAND, ComponentHolderType.ENTITY));
+```
+
+
+## Building
+Build using `gradlew build`

@@ -1,19 +1,21 @@
 package code.frfole.combat;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jglrxavpok.hephaistos.nbt.NBT;
+
 
 /**
  * {@inheritDoc}
  */
-public record CombatComponent(String name, boolean ignoreCanceled, @Nullable NBT data) {
+public record CombatComponent(@NotNull String name, boolean ignoreCanceled, @Nullable NBT data) {
 
     /**
      * CombatComponent is used to store the combat data of an item.
      * @param name the identifier of the component
      * @param data additional data of the component
      */
-    public CombatComponent(String name, @Nullable NBT data) {
+    public CombatComponent(@NotNull String name, @Nullable NBT data) {
         this(name, true, data);
     }
 

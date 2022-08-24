@@ -22,6 +22,10 @@ public final class CombatContext implements Taggable {
      * The tag used to indicate the attack is canceled.
      */
     public static final Tag<@NotNull Boolean> CANCEL_TAG = Tag.Boolean("cancel").defaultValue(false);
+    /**
+     * The tag used to indicate the next component index.
+     */
+    public static final Tag<@NotNull Integer> NEXT_COMPONENT_IDX_TAG = Tag.Integer("next_component_idx").defaultValue(0);
     private final @NotNull Entity attacker;
     private final @NotNull Entity target;
     @SuppressWarnings("UnstableApiUsage")

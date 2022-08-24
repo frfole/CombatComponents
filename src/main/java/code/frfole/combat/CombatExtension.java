@@ -50,9 +50,13 @@ public final class CombatExtension extends Extension {
         this.allComponents = Map.of();
     }
 
-    private void onEntityAttack(@NotNull EntityAttackEvent event) {
-        Entity attacker = event.getEntity();
-        Entity target = event.getTarget();
+    /**
+     * Run attack for the given entities.
+     * @param attacker the attacker
+     * @param target   the target of attack
+     * @return the result of attack
+     */
+    public @NotNull AttackResult attack(@NotNull Entity attacker, @NotNull Entity target) {
         List<CombatComponent> components = new ArrayList<>();
         for (ComponentHolderType holderType : attacker.getTag(COMPONENT_PREFERENCES_TAG)) {
             components.addAll(switch (holderType) {
@@ -66,18 +70,34 @@ public final class CombatExtension extends Extension {
                 default -> List.of();
             });
         }
+        CombatComponent[] componentsArr = components.toArray(new CombatComponent[0]);
         CombatContext context = new CombatContext(attacker, target);
-        for (CombatComponent component : components) {
-            if (component.ignoreCanceled() && context.isCanceled()) continue;
+        int idx = 0;
+        while (idx >= 0 && idx < componentsArr.length) {
+            CombatComponent component = componentsArr[idx];
+            context.setTag(CombatContext.NEXT_COMPONENT_IDX_TAG, idx + 1);
+            if (component.ignoreCanceled() && context.isCanceled()) {
+                idx = context.getTag(CombatContext.NEXT_COMPONENT_IDX_TAG);
+                continue;
+            }
             BiConsumer<CombatContext, NBT> consumer = allComponents.get(component.name());
             if (consumer == null) {
+                idx = context.getTag(CombatContext.NEXT_COMPONENT_IDX_TAG);
                 MinecraftServer.getExceptionManager().handleException(new IllegalArgumentException("Unknown combat component: " + component.name()));
                 continue;
             }
             consumer.accept(context, component.data());
+            idx = context.getTag(CombatContext.NEXT_COMPONENT_IDX_TAG);
         }
-        if (!context.isCanceled() && target instanceof LivingEntity livingTarget) {
-            livingTarget.damage(DamageType.fromEntity(attacker), context.getDamage());
+        float damage = context.getDamage();
+        boolean canceled = context.isCanceled();
+        if (!canceled && target instanceof LivingEntity livingTarget) {
+            livingTarget.damage(DamageType.fromEntity(attacker), damage);
         }
+        return new AttackResult(canceled, damage, context.tagHandler().asCompound());
+    }
+
+    private void onEntityAttack(@NotNull EntityAttackEvent event) {
+        attack(event.getEntity(), event.getTarget());
     }
 }
